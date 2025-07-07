@@ -8,7 +8,7 @@ import os
 import requests
 
 def get_target_url():
-    now = datetime.datetime.utcnow() + datetime.timedelta(hours=9)  # JST
+    now = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=9)
     if now.hour < 3:
         target_date = now - datetime.timedelta(days=1)
         date_str = target_date.strftime("%m%d")
@@ -22,22 +22,36 @@ def get_target_url():
 def fetch_csv(url):
     print(f"Fetching CSV: {url}")
     df = pd.read_csv(url, encoding="shift_jis")
+    print(f"Columns: {df.columns.tolist()}")
     return df
 
 def process_temperature(df):
-    # 1列目: 順位が無い場合があるので、独自に並び替え
-    df["気温"] = pd.to_numeric(df["気温"], errors="coerce")
-    df = df.dropna(subset=["気温"])
-    df = df.sort_values("気温", ascending=False).reset_index(drop=True)
+    place_col = "地点"
+    minute_col = "現在時刻(分)"
+
+    # 動的に最高気温カラム名を取得
+    minute_idx = df.columns.get_loc(minute_col)
+    temp_col = df.columns[minute_idx + 1]
+    hour_col = df.columns[minute_idx + 2]   # 起時（時）
+    minute2_col = df.columns[minute_idx + 3] # 起時（分）
+
+    print(f"Detected temp_col: {temp_col}")
+
+    df[temp_col] = pd.to_numeric(df[temp_col], errors="coerce")
+    df = df.dropna(subset=[temp_col])
+    df = df.sort_values(temp_col, ascending=False).reset_index(drop=True)
     df["rank"] = df.index + 1
 
-    # 多治見
-    tajimi = df[df["地点"].str.contains("多治見", na=False)]
+    tajimi = df[df[place_col].str.contains("多治見", na=False)]
     if tajimi.empty:
         raise Exception("多治見 not found!")
 
     tajimi_row = tajimi.iloc[0]
-    return df, tajimi_row
+    tajimi_row["起時"] = f"{int(tajimi_row[hour_col])}:{int(tajimi_row[minute2_col]):02d}"
+
+    df["起時"] = df[hour_col].astype(int).astype(str) + ":" + df[minute2_col].astype(int).astype(str).str.zfill(2)
+
+    return df, tajimi_row, temp_col
 
 def save_json(df, today_str):
     output = {
@@ -83,10 +97,10 @@ def send_line_message(message):
 if __name__ == "__main__":
     url, today_str = get_target_url()
     df = fetch_csv(url)
-    df, tajimi = process_temperature(df)
+    df, tajimi, temp_col = process_temperature(df)
     save_json(df, today_str)
 
-    now = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
+    now = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=9)
     label = "[確定]" if now.hour < 3 else "[速報]"
-    msg = f"{label} {today_str}\n多治見 {tajimi['気温']}℃ 全国{tajimi['rank']}位\n({tajimi['時刻']})"
+    msg = f"{label} {today_str}\n多治見 {tajimi[temp_col]}℃ 全国{tajimi['rank']}位\n({tajimi['起時']})"
     send_line_message(msg)
