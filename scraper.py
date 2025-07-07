@@ -102,5 +102,5 @@ if __name__ == "__main__":
 
     now = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=9)
     label = "[確定]" if now.hour < 3 else "[速報]"
-    msg = f"{label} {today_str}\n多治見 {tajimi[temp_col]}℃ 全国{tajimi['rank']}位\n({tajimi['起時']})"
+    msg = f"{label} {today_str}\n本日の多治見は {tajimi[temp_col]}℃ で 全国{tajimi['rank']}位でした。\n({tajimi['起時']})"
     send_line_message(msg)
