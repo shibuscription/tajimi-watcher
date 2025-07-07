@@ -66,22 +66,20 @@ def save_json(df, today_str):
     with open("data/latest.json", "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
 
-def send_line_message(message):
+def send_line_broadcast(message):
     access_token = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
-    user_id = os.environ.get("LINE_USER_ID")
 
-    if not access_token or not user_id:
-        print("LINE Messaging API credentials not set.")
+    if not access_token:
+        print("LINE Messaging API token not set.")
         return
 
-    url = "https://api.line.me/v2/bot/message/push"
+    url = "https://api.line.me/v2/bot/message/broadcast"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {access_token}"
     }
 
     payload = {
-        "to": user_id,
         "messages": [
             {
                 "type": "text",
@@ -103,4 +101,4 @@ if __name__ == "__main__":
     now = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=9)
     label = "[確定]" if now.hour < 3 else "[速報]"
     msg = f"{label} {today_str}\n本日の多治見は {tajimi[temp_col]}℃ で 全国{tajimi['rank']}位でした。\n({tajimi['起時']})"
-    send_line_message(msg)
+    send_line_broadcast(msg)
