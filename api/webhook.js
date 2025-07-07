@@ -3,8 +3,14 @@ export default async function handler(req, res) {
     return res.status(405).send("Method Not Allowed");
   }
 
-  // ← ここが大事！自力で JSON を読む
-  const body = await req.json();
+  // ← ここが大事！生のボディを読む
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(chunk);
+  }
+  const rawBody = Buffer.concat(chunks).toString();
+  const body = JSON.parse(rawBody);
+
   console.log("BODY:", body);
 
   const event = body.events[0];
