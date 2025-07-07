@@ -32,8 +32,8 @@ def process_temperature(df):
     # 動的に最高気温カラム名を取得
     minute_idx = df.columns.get_loc(minute_col)
     temp_col = df.columns[minute_idx + 1]
-    hour_col = df.columns[minute_idx + 2]   # 起時（時）
-    minute2_col = df.columns[minute_idx + 3] # 起時（分）
+    hour_col = df.columns[minute_idx + 3]   # 起時（時）
+    minute2_col = df.columns[minute_idx + 4] # 起時（分）
 
     print(f"Detected temp_col: {temp_col}")
 
