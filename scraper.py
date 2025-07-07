@@ -6,6 +6,7 @@ import datetime
 import json
 import os
 import requests
+import argparse
 
 def get_target_url():
     now = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=9)
@@ -93,12 +94,17 @@ def send_line_broadcast(message):
     print(res.text)
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--no-line", action="store_true", help="LINE通知を送らない")
+    args = parser.parse_args()
+
     url, today_str = get_target_url()
     df = fetch_csv(url)
     df, tajimi, temp_col = process_temperature(df)
     save_json(df, today_str)
 
-    now = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=9)
-    label = "[確定]" if now.hour < 3 else "[速報]"
-    msg = f"{label} {today_str}\n本日の多治見は {tajimi[temp_col]}℃ で 全国{tajimi['rank']}位でした。\n({tajimi['起時']})"
-    send_line_broadcast(msg)
+    if not args.no_line:
+        now = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=9)
+        label = "[確定]" if now.hour < 3 else "[速報]"
+        msg = f"{label} {today_str}\n本日の多治見は {tajimi[temp_col]}℃ で 全国{tajimi['rank']}位でした。\n({tajimi['起時']})"
+        send_line_broadcast(msg)
