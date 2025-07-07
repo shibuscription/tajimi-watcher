@@ -3,14 +3,15 @@ export default async function handler(req, res) {
     return res.status(405).send("Method Not Allowed");
   }
 
-  const body = req.body;
-  console.log(JSON.stringify(body, null, 2));
+  // ← ここが大事！自力で JSON を読む
+  const body = await req.json();
+  console.log("BODY:", body);
 
   const event = body.events[0];
   const userText = event.message.text;
   const replyToken = event.replyToken;
 
-  let replyMessage = "「今何位？」って送ってくれたら、多治見の順位を教えるよ！";
+  let replyMessage = "「今何位？」って送ってくれたら教えるよ！";
 
   if (userText.includes("何位")) {
     try {
@@ -20,10 +21,11 @@ export default async function handler(req, res) {
       if (tajimi) {
         replyMessage = `🌡️ ${latest.date}\n多治見は ${tajimi.temp}℃ 全国${tajimi.rank}位！ (${tajimi.起時})`;
       } else {
-        replyMessage = "多治見のデータが見つからなかったよ！";
+        replyMessage = "多治見のデータが見つからなかった！";
       }
     } catch (e) {
-      replyMessage = "ごめん、最新データを取れなかった！";
+      console.error(e);
+      replyMessage = "データ取得エラー！";
     }
   }
 
