@@ -30,11 +30,10 @@ def process_temperature(df):
     place_col = "地点"
     minute_col = "現在時刻(分)"
 
-    # 動的に最高気温カラム名を取得
     minute_idx = df.columns.get_loc(minute_col)
     temp_col = df.columns[minute_idx + 1]
-    hour_col = df.columns[minute_idx + 3]   # 起時（時）
-    minute2_col = df.columns[minute_idx + 4] # 起時（分）
+    hour_col = df.columns[minute_idx + 3]
+    minute2_col = df.columns[minute_idx + 4]
 
     print(f"Detected temp_col: {temp_col}")
 
@@ -47,13 +46,14 @@ def process_temperature(df):
     if tajimi.empty:
         raise Exception("多治見 not found!")
 
-    tajimi_row = tajimi.iloc[0]
-    tajimi_row["起時"] = f"{int(tajimi_row[hour_col])}:{int(tajimi_row[minute2_col]):02d}"
-
     df["起時"] = df[hour_col].astype(int).astype(str) + ":" + df[minute2_col].astype(int).astype(str).str.zfill(2)
 
-    # ← NaN 対策：ここが超重要！
     df = df.where(pd.notnull(df), None)
+
+    # ← Series も dict 化して NaN → None
+    tajimi_row = tajimi.iloc[0].to_dict()
+    tajimi_row = {k: (None if pd.isna(v) else v) for k, v in tajimi_row.items()}
+    tajimi_row["起時"] = f"{int(tajimi.iloc[0][hour_col])}:{int(tajimi.iloc[0][minute2_col]):02d}"
 
     return df, tajimi_row, temp_col
 
