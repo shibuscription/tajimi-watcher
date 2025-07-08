@@ -48,7 +48,8 @@ def process_temperature(df):
 
     df["起時"] = df[hour_col].astype(int).astype(str) + ":" + df[minute2_col].astype(int).astype(str).str.zfill(2)
 
-    df = df.where(pd.notnull(df), None)
+    # 🔥 ← 完全に NaN を None に！
+    df = df.replace({pd.NA: None, pd.NaT: None, float('nan'): None})
 
     # ← Series も dict 化して NaN → None
     tajimi_row = tajimi.iloc[0].to_dict()
