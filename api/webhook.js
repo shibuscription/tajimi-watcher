@@ -3,7 +3,7 @@ export default async function handler(req, res) {
     return res.status(405).send("Method Not Allowed");
   }
 
-  // ← ここが大事！生のボディを読む
+  // 生のボディを読む
   const chunks = [];
   for await (const chunk of req) {
     chunks.push(chunk);
@@ -23,9 +23,19 @@ export default async function handler(req, res) {
     try {
       const latestRes = await fetch("https://shibuscription.github.io/tajimi-watcher/data/latest.json");
       const latest = await latestRes.json();
+
+      // 🔥 カラム名を動的に決定！
+      const sample = latest.ranking[0];
+      const keys = Object.keys(sample);
+      const minute_col = "現在時刻(分)";
+      const minute_idx = keys.indexOf(minute_col);
+      const temp_col = keys[minute_idx + 1]; // ← これが当日の温度カラム
+
+      console.log(`Detected temp_col: ${temp_col}`);
+
       const tajimi = latest.ranking.find((r) => r.地点.includes("多治見"));
       if (tajimi) {
-        replyMessage = `🌡️ ${latest.date}\n多治見は ${tajimi.temp}℃ 全国${tajimi.rank}位！ (${tajimi.起時})`;
+        replyMessage = `🌡️ ${latest.date}\n多治見は ${tajimi[temp_col]}℃ 全国${tajimi.rank}位！ (${tajimi.起時})`;
       } else {
         replyMessage = "多治見のデータが見つからなかった！";
       }
