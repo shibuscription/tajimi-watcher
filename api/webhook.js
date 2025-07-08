@@ -43,7 +43,25 @@ export default async function handler(req, res) {
       console.error(e);
       replyMessage = "データ取得エラー！";
     }
+  } else if (userText.includes("1位")) {
+  // 1位どこ？パターン
+  try {
+    const latestRes = await fetch("https://shibuscription.github.io/tajimi-watcher/data/latest.json");
+    const latest = await latestRes.json();
+
+    const sample = latest.ranking[0];
+    const keys = Object.keys(sample);
+    const minute_col = "現在時刻(分)";
+    const minute_idx = keys.indexOf(minute_col);
+    const temp_col = keys[minute_idx + 1];
+
+    const top = latest.ranking[0]; // 一番上が1位
+    replyMessage = `🥇 ${latest.date}\n全国1位は ${top.地点} で ${top[temp_col]}℃！ (${top.起時})`;
+  } catch (e) {
+    console.error(e);
+    replyMessage = "データ取得エラー！";
   }
+}
 
   await fetch("https://api.line.me/v2/bot/message/reply", {
     method: "POST",
