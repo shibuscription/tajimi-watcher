@@ -17,51 +17,67 @@ export default async function handler(req, res) {
   const userText = event.message.text;
   const replyToken = event.replyToken;
 
-  let replyMessage = "「今何位？」って送ってくれたら教えるよ！";
+  let replyMessage = "「今何位？」か「1位どこ？」って送ってくれたら教えるよ！";
 
-  if (userText.includes("何位")) {
+  // ---- ▼ Pythonのget_target_url()相当 ▼ ----
+  const now = new Date(new Date().getTime() + 9 * 60 * 60 * 1000); // JST
+  let csvUrl;
+  if (now.getHours() < 3) {
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const mm = String(yesterday.getMonth() + 1).padStart(2, '0');
+    const dd = String(yesterday.getDate()).padStart(2, '0');
+    csvUrl = `https://www.data.jma.go.jp/stats/data/mdrr/tem_rct/alltable/mxtemsadext${mm}${dd}.csv`;
+  } else {
+    csvUrl = `https://www.data.jma.go.jp/stats/data/mdrr/tem_rct/alltable/mxtemsadext00_rct.csv`;
+  }
+
+  // ---- ▼ 「今何位？」or「1位どこ？」で分岐 ▼ ----
+  if (userText.includes("何位") || userText.includes("1位")) {
     try {
-      const latestRes = await fetch("https://shibuscription.github.io/tajimi-watcher/data/latest.json");
-      const latest = await latestRes.json();
+      // CSV を Shift_JIS で取る
+      const csvRes = await fetch(csvUrl);
+      const buffer = await csvRes.arrayBuffer();
+      const iconv = (await import("iconv-lite")).default;
+      const sjisText = iconv.decode(Buffer.from(buffer), "Shift_JIS");
 
-      // 🔥 カラム名を動的に決定！
-      const sample = latest.ranking[0];
-      const keys = Object.keys(sample);
-      const minute_col = "現在時刻(分)";
-      const minute_idx = keys.indexOf(minute_col);
-      const temp_col = keys[minute_idx + 1]; // ← これが当日の温度カラム
+      // CSV をパース
+      const Papa = (await import("papaparse")).default;
+      const parsed = Papa.parse(sjisText, { header: true });
 
-      console.log(`Detected temp_col: ${temp_col}`);
+      const df = parsed.data.filter((row) => row.地点); // 不要行除去
 
-      const tajimi = latest.ranking.find((r) => r.地点.includes("多治見"));
-      if (tajimi) {
-        replyMessage = `🌡️ ${latest.date}\n多治見は ${tajimi[temp_col]}℃ 全国${tajimi.rank}位！ (${tajimi.起時})`;
-      } else {
-        replyMessage = "多治見のデータが見つからなかった！";
+      const keys = Object.keys(df[0]);
+      const minuteCol = "現在時刻(分)";
+      const minuteIdx = keys.indexOf(minuteCol);
+      const tempCol = keys[minuteIdx + 1];
+      const hourCol = keys[minuteIdx + 3];
+      const minute2Col = keys[minuteIdx + 4];
+
+      // 数値化 & 並べ替え
+      df.forEach(row => {
+        row[tempCol] = parseFloat(row[tempCol]);
+      });
+      const sorted = df.filter(row => !isNaN(row[tempCol]))
+                       .sort((a, b) => b[tempCol] - a[tempCol])
+                       .map((row, idx) => ({ ...row, rank: idx + 1, 起時: `${parseInt(row[hourCol])}:${String(parseInt(row[minute2Col])).padStart(2, '0')}` }));
+
+      if (userText.includes("何位")) {
+        const tajimi = sorted.find(r => r.地点.includes("多治見"));
+        if (tajimi) {
+          replyMessage = `🌡️ ${now.toISOString().slice(0,10)}\n多治見は ${tajimi[tempCol]}℃ 全国${tajimi.rank}位！ (${tajimi.起時})`;
+        } else {
+          replyMessage = "多治見のデータが見つからなかった！";
+        }
+      } else if (userText.includes("1位")) {
+        const top = sorted[0];
+        replyMessage = `🥇 ${now.toISOString().slice(0,10)}\n全国1位は ${top.地点} ${top[tempCol]}℃ (${top.起時})`;
       }
     } catch (e) {
       console.error(e);
       replyMessage = "データ取得エラー！";
     }
-  } else if (userText.includes("1位")) {
-  // 1位どこ？パターン
-  try {
-    const latestRes = await fetch("https://shibuscription.github.io/tajimi-watcher/data/latest.json");
-    const latest = await latestRes.json();
-
-    const sample = latest.ranking[0];
-    const keys = Object.keys(sample);
-    const minute_col = "現在時刻(分)";
-    const minute_idx = keys.indexOf(minute_col);
-    const temp_col = keys[minute_idx + 1];
-
-    const top = latest.ranking[0]; // 一番上が1位
-    replyMessage = `🥇 ${latest.date}\n全国1位は ${top.地点} で ${top[temp_col]}℃！ (${top.起時})`;
-  } catch (e) {
-    console.error(e);
-    replyMessage = "データ取得エラー！";
   }
-}
 
   await fetch("https://api.line.me/v2/bot/message/reply", {
     method: "POST",
