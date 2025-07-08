@@ -52,6 +52,9 @@ def process_temperature(df):
 
     df["起時"] = df[hour_col].astype(int).astype(str) + ":" + df[minute2_col].astype(int).astype(str).str.zfill(2)
 
+    # ← NaN 対策：ここが超重要！
+    df = df.where(pd.notnull(df), None)
+
     return df, tajimi_row, temp_col
 
 def save_json(df, today_str):
@@ -62,11 +65,10 @@ def save_json(df, today_str):
 
     os.makedirs("data", exist_ok=True)
     with open(f"data/{today_str}.json", "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2, allow_nan=False)
-
+        json.dump(output, f, ensure_ascii=False, indent=2, allow_nan=False)
 
     with open("data/latest.json", "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2, allow_nan=False)
+        json.dump(output, f, ensure_ascii=False, indent=2, allow_nan=False)
 
 def send_line_broadcast(message):
     access_token = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
