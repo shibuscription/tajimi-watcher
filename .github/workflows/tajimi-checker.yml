@@ -2,7 +2,7 @@ name: Tajimi Checker
 
 on:
   schedule:
-    - cron: '0 9 * * *'   # JST 18:00 → UTC 9:00
+    - cron: '0 8 * * *'   # JST 17:00 → UTC 8:00
     - cron: '0 16 * * *'  # JST 1:00 → UTC 16:00
   workflow_dispatch:
 
