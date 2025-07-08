@@ -3,8 +3,6 @@
 
 import pandas as pd
 import datetime
-import json
-import os
 import requests
 import argparse
 
@@ -48,28 +46,14 @@ def process_temperature(df):
 
     df["起時"] = df[hour_col].astype(int).astype(str) + ":" + df[minute2_col].astype(int).astype(str).str.zfill(2)
 
-    # 🔥 ← 完全に NaN を None に！
+    # 🔥 NaN → None
     df = df.replace({pd.NA: None, pd.NaT: None, float('nan'): None})
 
-    # ← Series も dict 化して NaN → None
     tajimi_row = tajimi.iloc[0].to_dict()
     tajimi_row = {k: (None if pd.isna(v) else v) for k, v in tajimi_row.items()}
     tajimi_row["起時"] = f"{int(tajimi.iloc[0][hour_col])}:{int(tajimi.iloc[0][minute2_col]):02d}"
 
     return df, tajimi_row, temp_col
-
-def save_json(df, today_str):
-    output = {
-        "date": today_str,
-        "ranking": df.to_dict(orient="records")
-    }
-
-    os.makedirs("data", exist_ok=True)
-    with open(f"data/{today_str}.json", "w", encoding="utf-8") as f:
-        json.dump(output, f, ensure_ascii=False, indent=2, allow_nan=False)
-
-    with open("data/latest.json", "w", encoding="utf-8") as f:
-        json.dump(output, f, ensure_ascii=False, indent=2, allow_nan=False)
 
 def send_line_broadcast(message):
     access_token = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
@@ -105,7 +89,6 @@ if __name__ == "__main__":
     url, today_str = get_target_url()
     df = fetch_csv(url)
     df, tajimi, temp_col = process_temperature(df)
-    save_json(df, today_str)
 
     if not args.no_line:
         now = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=9)
