@@ -32,7 +32,6 @@ export default async function handler(req, res) {
     csvUrl = `https://www.data.jma.go.jp/stats/data/mdrr/tem_rct/alltable/mxtemsadext00_rct.csv`;
   }
 
-  // ---- ▼ 「今何位？」or「1位どこ？」で分岐 ▼ ----
   if (userText.includes("何位") || userText.includes("1位")) {
     try {
       // CSV を Shift_JIS で取る
@@ -45,8 +44,7 @@ export default async function handler(req, res) {
       const Papa = (await import("papaparse")).default;
       const parsed = Papa.parse(sjisText, { header: true });
 
-      const df = parsed.data.filter((row) => row.地点); // 不要行除去
-
+      const df = parsed.data.filter((row) => row.地点);
       const keys = Object.keys(df[0]);
       const minuteCol = "現在時刻(分)";
       const minuteIdx = keys.indexOf(minuteCol);
@@ -54,23 +52,34 @@ export default async function handler(req, res) {
       const hourCol = keys[minuteIdx + 3];
       const minute2Col = keys[minuteIdx + 4];
 
-      // 数値化 & 並べ替え
       df.forEach(row => {
         row[tempCol] = parseFloat(row[tempCol]);
       });
-      const sorted = df.filter(row => !isNaN(row[tempCol]))
-                       .sort((a, b) => b[tempCol] - a[tempCol])
-                       .map((row, idx) => ({ ...row, rank: idx + 1, 起時: `${parseInt(row[hourCol])}:${String(parseInt(row[minute2Col])).padStart(2, '0')}` }));
+
+      const valid = df.filter(row => !isNaN(row[tempCol]))
+        .sort((a, b) => b[tempCol] - a[tempCol]);
+
+      // ✅ 同率順位対応
+      let prevTemp = null;
+      let rank = 0;
+      valid.forEach((row, idx) => {
+        if (row[tempCol] !== prevTemp) {
+          rank = idx + 1;
+          prevTemp = row[tempCol];
+        }
+        row.rank = rank;
+        row.起時 = `${parseInt(row[hourCol])}:${String(parseInt(row[minute2Col])).padStart(2, '0')}`;
+      });
 
       if (userText.includes("何位")) {
-        const tajimi = sorted.find(r => r.地点.includes("多治見"));
+        const tajimi = valid.find(r => r.地点.includes("多治見"));
         if (tajimi) {
           replyMessage = `🌡️ ${now.toISOString().slice(0,10)}\n多治見は ${tajimi[tempCol]}℃ 全国${tajimi.rank}位！ (${tajimi.起時})`;
         } else {
           replyMessage = "多治見のデータが見つからなかった！";
         }
       } else if (userText.includes("1位")) {
-        const top = sorted[0];
+        const top = valid[0];
         replyMessage = `🥇 ${now.toISOString().slice(0,10)}\n全国1位は ${top.地点} ${top[tempCol]}℃ (${top.起時})`;
       }
     } catch (e) {

@@ -39,7 +39,8 @@ def process_temperature(df):
     df[temp_col] = pd.to_numeric(df[temp_col], errors="coerce")
     df = df.dropna(subset=[temp_col])
     df = df.sort_values(temp_col, ascending=False).reset_index(drop=True)
-    df["rank"] = df.index + 1
+    # ✅ 同率順位を rank() でちゃんとつける！
+    df["rank"] = df[temp_col].rank(method="min", ascending=False).astype(int)
 
     tajimi = df[df[place_col].str.contains("多治見", na=False)]
     if tajimi.empty:
