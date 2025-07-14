@@ -74,13 +74,15 @@ export default async function handler(req, res) {
       if (userText.includes("何位")) {
         const tajimi = valid.find(r => r.地点.includes("多治見"));
         if (tajimi) {
-          replyMessage = `🌡️ ${now.toISOString().slice(0,10)}\n多治見は ${tajimi[tempCol]}℃ 全国${tajimi.rank}位！ (${tajimi.起時})`;
+          replyMessage = `🌡️ ${now.toISOString().slice(0, 10)}\n多治見は ${tajimi[tempCol]}℃ 全国${tajimi.rank}位！ (${tajimi.起時})`;
         } else {
           replyMessage = "多治見のデータが見つからなかった！";
         }
       } else if (userText.includes("1位")) {
         const top = valid[0];
-        replyMessage = `🥇 ${now.toISOString().slice(0,10)}\n全国1位は ${top.地点} ${top[tempCol]}℃ (${top.起時})`;
+        const topPref = top["都道府県"] || "";
+        replyMessage = `🥇 ${now.toISOString().slice(0, 10)}\n全国1位は ${top.地点} ${top[tempCol]}℃ (${top.起時})`;
+        replyMessage = `🥇 ${now.toISOString().slice(0, 10)}\n全国1位は ${top.地点}（${topPref}） ${top[tempCol]}℃ (${top.起時})`;
       }
     } catch (e) {
       console.error(e);
