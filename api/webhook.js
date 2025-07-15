@@ -72,32 +72,53 @@ export default async function handler(req, res) {
       });
 
       if (userText.includes("何位")) {
-        const keyword = userText
-          .replace("は何位", "")
-          .replace("何位", "")
-          .replace("？", "")
-          .replace("?", "")
-          .trim();
+        // キーワード抽出前に sorted を定義しておく（全体で使えるように）
+        const sorted = df
+          .filter(row => !isNaN(row[tempCol]))
+          .sort((a, b) => b[tempCol] - a[tempCol])
+          .map((row, idx) => ({
+            ...row,
+            rank: idx + 1,
+            起時: `${parseInt(row[hourCol])}:${String(parseInt(row[minute2Col])).padStart(2, '0')}`
+          }));
 
-        const matches = sorted.filter(r => r.地点 && r.地点.includes(keyword));
-
-        if ((keyword === "" || keyword.includes("多治見")) && matches.length === 0) {
-          const tajimi = sorted.find(r => r.地点.includes("多治見"));
+        // 特別なフレーズ「今何位？」をチェック（正確に「今」が地名でないケース）
+        if (userText === "今何位？" || userText === "今何位" || userText.trim() === "今何位？") {
+          const tajimi = sorted.find(r => r.地点 && r.地点.includes("多治見"));
           if (tajimi) {
             replyMessage = `🌡️ ${now.toISOString().slice(0, 10)}\n多治見は ${tajimi[tempCol]}℃ 全国${tajimi.rank}位！ (${tajimi.起時})`;
           } else {
-            replyMessage = `多治見のデータが見つからなかった！`;
+            replyMessage = "多治見のデータが見つからなかった！";
           }
-        } else if (matches.length === 0) {
-          replyMessage = `${keyword}のデータが見つからなかったよ！`;
-        } else if (matches.length === 1) {
-          const r = matches[0];
-          replyMessage = `🌡️ ${now.toISOString().slice(0, 10)}\n${r.都道府県} ${r.地点} は ${r[tempCol]}℃ 全国${r.rank}位！ (${r.起時})`;
         } else {
-          const list = matches.slice(0, 5).map(r =>
-            `${r.都道府県} ${r.地点}：${r[tempCol]}℃ 全国${r.rank}位（${r.起時}）`
-          ).join("\n");
-          replyMessage = `🏙️「${keyword}」を含む地点は複数あります：\n\n${list}`;
+          // 通常の地名キーワード抽出
+          const keyword = userText
+            .replace("は何位", "")
+            .replace("何位", "")
+            .replace("？", "")
+            .replace("?", "")
+            .trim();
+
+          const matches = sorted.filter(r => r.地点 && r.地点.includes(keyword));
+
+          if ((keyword === "" || keyword === "多治見") && matches.length === 0) {
+            const tajimi = sorted.find(r => r.地点.includes("多治見"));
+            if (tajimi) {
+              replyMessage = `🌡️ ${now.toISOString().slice(0, 10)}\n多治見は ${tajimi[tempCol]}℃ 全国${tajimi.rank}位！ (${tajimi.起時})`;
+            } else {
+              replyMessage = `多治見のデータが見つからなかった！`;
+            }
+          } else if (matches.length === 0) {
+            replyMessage = `${keyword}のデータが見つからなかったよ！`;
+          } else if (matches.length === 1) {
+            const r = matches[0];
+            replyMessage = `🌡️ ${now.toISOString().slice(0, 10)}\n${r.都道府県} ${r.地点} は ${r[tempCol]}℃ 全国${r.rank}位！ (${r.起時})`;
+          } else {
+            const list = matches.slice(0, 5).map(r =>
+              `${r.都道府県} ${r.地点}：${r[tempCol]}℃ 全国${r.rank}位（${r.起時}）`
+            ).join("\n");
+            replyMessage = `🏙️「${keyword}」を含む地点は複数あります：\n\n${list}`;
+          }
         }
       } else if (userText.includes("1位")) {
         const top = valid[0];
