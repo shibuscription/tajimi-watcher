@@ -39,7 +39,6 @@ def process_temperature(df):
     df[temp_col] = pd.to_numeric(df[temp_col], errors="coerce")
     df = df.dropna(subset=[temp_col])
     df = df.sort_values(temp_col, ascending=False).reset_index(drop=True)
-    # ✅ 同率順位を rank() でちゃんとつける！
     df["rank"] = df[temp_col].rank(method="min", ascending=False).astype(int)
 
     tajimi = df[df[place_col].str.contains("多治見", na=False)]
@@ -48,7 +47,6 @@ def process_temperature(df):
 
     df["起時"] = df[hour_col].astype(int).astype(str) + ":" + df[minute2_col].astype(int).astype(str).str.zfill(2)
 
-    # 🔥 NaN → None
     df = df.replace({pd.NA: None, pd.NaT: None, float('nan'): None})
 
     tajimi_row = tajimi.iloc[0].to_dict()
@@ -57,20 +55,22 @@ def process_temperature(df):
 
     return df, tajimi_row, temp_col
 
-def send_line_broadcast(message):
+def send_line_push(message):
     access_token = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
+    user_id = os.environ.get("LINE_USER_ID")
 
-    if not access_token:
-        print("LINE Messaging API token not set.")
+    if not access_token or not user_id:
+        print("LINE token または user_id が設定されていません。")
         return
 
-    url = "https://api.line.me/v2/bot/message/broadcast"
+    url = "https://api.line.me/v2/bot/message/push"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {access_token}"
     }
 
     payload = {
+        "to": user_id,
         "messages": [
             {
                 "type": "text",
@@ -80,7 +80,7 @@ def send_line_broadcast(message):
     }
 
     res = requests.post(url, headers=headers, json=payload)
-    print(f"LINE Messaging API status: {res.status_code}")
+    print(f"LINE Push API status: {res.status_code}")
     print(res.text)
 
 if __name__ == "__main__":
@@ -96,4 +96,4 @@ if __name__ == "__main__":
         now = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=9)
         label = "[確定]" if now.hour < 3 else "[速報]"
         msg = f"{label} {today_str}\n本日の多治見は {tajimi[temp_col]}℃ で 全国{tajimi['rank']}位でした。\n({tajimi['起時']})"
-        send_line_broadcast(msg)
+        send_line_push(msg)
