@@ -72,11 +72,32 @@ export default async function handler(req, res) {
       });
 
       if (userText.includes("何位")) {
-        const tajimi = valid.find(r => r.地点.includes("多治見"));
-        if (tajimi) {
-          replyMessage = `🌡️ ${now.toISOString().slice(0, 10)}\n多治見は ${tajimi[tempCol]}℃ 全国${tajimi.rank}位！ (${tajimi.起時})`;
+        const keyword = userText
+          .replace("は何位", "")
+          .replace("何位", "")
+          .replace("？", "")
+          .replace("?", "")
+          .trim();
+
+        const matches = sorted.filter(r => r.地点 && r.地点.includes(keyword));
+
+        if ((keyword === "" || keyword.includes("多治見")) && matches.length === 0) {
+          const tajimi = sorted.find(r => r.地点.includes("多治見"));
+          if (tajimi) {
+            replyMessage = `🌡️ ${now.toISOString().slice(0, 10)}\n多治見は ${tajimi[tempCol]}℃ 全国${tajimi.rank}位！ (${tajimi.起時})`;
+          } else {
+            replyMessage = `多治見のデータが見つからなかった！`;
+          }
+        } else if (matches.length === 0) {
+          replyMessage = `${keyword}のデータが見つからなかったよ！`;
+        } else if (matches.length === 1) {
+          const r = matches[0];
+          replyMessage = `🌡️ ${now.toISOString().slice(0, 10)}\n${r.都道府県} ${r.地点} は ${r[tempCol]}℃ 全国${r.rank}位！ (${r.起時})`;
         } else {
-          replyMessage = "多治見のデータが見つからなかった！";
+          const list = matches.slice(0, 5).map(r =>
+            `${r.都道府県} ${r.地点}：${r[tempCol]}℃ 全国${r.rank}位（${r.起時}）`
+          ).join("\n");
+          replyMessage = `🏙️「${keyword}」を含む地点は複数あります：\n\n${list}`;
         }
       } else if (userText.includes("1位")) {
         const top = valid[0];
