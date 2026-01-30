@@ -1,0 +1,26 @@
+name: Keep Alive
+
+on:
+  schedule:
+    - cron: '0 0 15 * *'  # 毎月15日 0時（UTC）= JST 午前9時ごろ
+  workflow_dispatch:
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set Git identity
+        run: |
+          git config user.name "shibuscription"
+          git config user.email "shibu8@gmail.com"
+
+      - name: Do empty commit
+        run: |
+          git commit --allow-empty -m "keep workflow alive"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
